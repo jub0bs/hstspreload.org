@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -422,7 +423,7 @@ func TestCORS(t *testing.T) {
 		handlerFunc  http.HandlerFunc
 		method       string
 		clientOrigin string
-		wantCORS     string
+		wantACAO     string
 	}{
 		// Handlers that should allow CORS.
 		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "", ""},
@@ -472,27 +473,56 @@ func TestCORS(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		r, err := http.NewRequest(tt.method, "", nil)
-		if err != nil {
-			t.Fatalf("%s", err)
-		}
+		r := httptest.NewRequest(tt.method, "https://hstspreload.org", nil)
 		r.Header.Set("Origin", tt.clientOrigin)
-
 		w := httptest.NewRecorder()
-		w.Body = &bytes.Buffer{}
 
 		tt.handlerFunc(w, r)
 
-		actual := w.Header().Get("Access-Control-Allow-Origin")
-		if tt.wantCORS != actual {
+		res := w.Result()
+		actualACAO := res.Header.Get("Access-Control-Allow-Origin")
+		if tt.wantACAO != actualACAO {
 			t.Errorf(
 				"[%s][%s][%s] CORS header `%s` does not match expected value `%s`.",
 				tt.handlerName,
 				tt.method,
 				tt.clientOrigin,
-				actual,
-				tt.wantCORS,
+				actualACAO,
+				tt.wantACAO,
+			)
+		}
+		actualVary := res.Header.Get("Vary")
+		if isConfiguredForCORS(tt.handlerName) && !contains(actualVary, "Origin") {
+			t.Errorf(
+				"[%s][%s][%s] Vary header `%s` does not list (in a case-insensitive manner) expected value `Origin`.",
+				tt.handlerName,
+				tt.method,
+				tt.clientOrigin,
+				actualVary,
 			)
 		}
 	}
+}
+
+func isConfiguredForCORS(handlerName string) bool {
+	switch handlerName {
+	case "Preloadable", "Status":
+		return true
+	default:
+		return false
+	}
+}
+
+// contains reports whether s, when treated as a list of comma-separated elements
+// (possibly with optional whitespace), contains a case-insensitive match for
+// target.
+func contains(s, target string) bool {
+	for _, elem := range strings.Split(s, ",") {
+		const OWS = "\t " // optional whitespace
+		elem = strings.Trim(elem, OWS)
+		if strings.EqualFold(elem, target) {
+			return true
+		}
+	}
+	return false
 }
