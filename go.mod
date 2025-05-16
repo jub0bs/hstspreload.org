@@ -10,7 +10,10 @@ require (
 	google.golang.org/grpc v1.72.1
 )
 
-require cloud.google.com/go/logging v1.13.0
+require (
+	cloud.google.com/go/logging v1.13.0
+	github.com/jub0bs/cors v0.5.9
+)
 
 require (
 	cloud.google.com/go v0.121.1 // indirect

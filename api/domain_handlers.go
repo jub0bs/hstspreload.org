@@ -56,11 +56,7 @@ func getASCIIDomain(wantMethod string, w http.ResponseWriter, r *http.Request) (
 //
 // Example: GET /preloadable?domain=garron.net
 func (api API) Preloadable() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if cont := api.allowCORS(w, r); !cont {
-			return
-		}
-
+	return CORSMiddleware.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		domain, ok := getASCIIDomain(http.MethodGet, w, r)
 		if !ok {
 			return
@@ -68,7 +64,7 @@ func (api API) Preloadable() http.Handler {
 
 		_, issues := api.hstspreload.PreloadableDomain(domain)
 		writeJSONOrBust(w, issues)
-	})
+	}))
 }
 
 // Removable takes a single domain and returns if it is removable.
@@ -132,11 +128,7 @@ func (api API) Removable(w http.ResponseWriter, r *http.Request) {
 //
 // Example: GET /status?domain=garron.net
 func (api API) Status() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if cont := api.allowCORS(w, r); !cont {
-			return
-		}
-
+	return CORSMiddleware.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		domain, ok := getASCIIDomain(http.MethodGet, w, r)
 		if !ok {
 			return
@@ -149,7 +141,7 @@ func (api API) Status() http.Handler {
 			return
 		}
 		writeJSONOrBust(w, bulkState)
-	})
+	}))
 }
 
 func (api API) statusForDomain(domain string) (*DomainStateWithBulk, error) {

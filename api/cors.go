@@ -1,56 +1,26 @@
 package api
 
-import (
-	"net/http"
-	"net/url"
-)
+import "github.com/jub0bs/cors"
 
-const (
-	corsOriginHeader = "Access-Control-Allow-Origin"
-)
+var CORSMiddleware *cors.Middleware
 
-// If you have a project that could use client-side API access
-// to hstspreload.org, feel free to send a pull request
-// to add your domain on GitHub:
-// https://github.com/chromium/hstspreload.org/edit/master/api/cors.go
-var whitelistedHosts = map[string]bool{
-	"mozilla.github.io":       true,
-	"observatory.mozilla.org": true,
-	"a.ncsccs.com":            true,
-	"chksite.com":             true,
-}
-
-func allowOrigin(clientOrigin string) bool {
-	o, err := url.Parse(clientOrigin)
-	if err != nil {
-		return false
+func init() {
+	var err error
+	// If you have a project that could use client-side API access
+	// to hstspreload.org, feel free to send a pull request
+	// to add your Web origin on GitHub:
+	// https://github.com/chromium/hstspreload.org/edit/master/api/cors.go
+	CORSMiddleware, err = cors.NewMiddleware(cors.Config{
+		Origins: []string{
+			"http://localhost:*",
+			"https://localhost:*",
+			"https://mozilla.github.io:*",
+			"https://observatory.mozilla.org:*",
+			"https://a.ncsccs.com:*",
+			"https://chksite.com:*",
+		},
+	})
+	if err != nil { // The CORS config is invalid.
+		panic(err)
 	}
-
-	switch {
-	case o.Hostname() == "localhost":
-		return true
-	case o.Scheme == "https" && whitelistedHosts[o.Hostname()]:
-		return true
-	default:
-		return false
-	}
-}
-
-func (api API) allowCORS(w http.ResponseWriter, r *http.Request) (cont bool) {
-	key := http.CanonicalHeaderKey("Origin")
-	clientOrigin := r.Header.Get(key)
-	if clientOrigin == "" {
-		return true
-	}
-
-	if allowOrigin(clientOrigin) {
-		w.Header().Set(corsOriginHeader, "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-		w.Header().Set("Access-Control-Max-Age", "86400")
-		w.Header().Set("Vary", "Origin")
-	} else {
-		w.Header().Set(corsOriginHeader, "null")
-	}
-
-	return r.Method != http.MethodOptions
 }
