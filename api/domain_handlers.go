@@ -55,18 +55,20 @@ func getASCIIDomain(wantMethod string, w http.ResponseWriter, r *http.Request) (
 // Preloadable takes a single domain and returns if it is preloadable.
 //
 // Example: GET /preloadable?domain=garron.net
-func (api API) Preloadable(w http.ResponseWriter, r *http.Request) {
-	if cont := api.allowCORS(w, r); !cont {
-		return
-	}
+func (api API) Preloadable() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if cont := api.allowCORS(w, r); !cont {
+			return
+		}
 
-	domain, ok := getASCIIDomain(http.MethodGet, w, r)
-	if !ok {
-		return
-	}
+		domain, ok := getASCIIDomain(http.MethodGet, w, r)
+		if !ok {
+			return
+		}
 
-	_, issues := api.hstspreload.PreloadableDomain(domain)
-	writeJSONOrBust(w, issues)
+		_, issues := api.hstspreload.PreloadableDomain(domain)
+		writeJSONOrBust(w, issues)
+	})
 }
 
 // Removable takes a single domain and returns if it is removable.
@@ -129,23 +131,25 @@ func (api API) Removable(w http.ResponseWriter, r *http.Request) {
 // Status takes a single domain and returns its preload status.
 //
 // Example: GET /status?domain=garron.net
-func (api API) Status(w http.ResponseWriter, r *http.Request) {
-	if cont := api.allowCORS(w, r); !cont {
-		return
-	}
+func (api API) Status() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if cont := api.allowCORS(w, r); !cont {
+			return
+		}
 
-	domain, ok := getASCIIDomain(http.MethodGet, w, r)
-	if !ok {
-		return
-	}
+		domain, ok := getASCIIDomain(http.MethodGet, w, r)
+		if !ok {
+			return
+		}
 
-	bulkState, err := api.statusForDomain(domain)
-	if err != nil {
-		msg := fmt.Sprintf("Internal error: could not retrieve status. (%s)\n", err)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
-	}
-	writeJSONOrBust(w, bulkState)
+		bulkState, err := api.statusForDomain(domain)
+		if err != nil {
+			msg := fmt.Sprintf("Internal error: could not retrieve status. (%s)\n", err)
+			http.Error(w, msg, http.StatusInternalServerError)
+			return
+		}
+		writeJSONOrBust(w, bulkState)
+	})
 }
 
 func (api API) statusForDomain(domain string) (*DomainStateWithBulk, error) {
@@ -404,7 +408,7 @@ func (api API) Remove(w http.ResponseWriter, r *http.Request) {
 
 type DomainStateWithIssues struct {
 	DomainState database.DomainState
-	Issues hstspreload.Issues
+	Issues      hstspreload.Issues
 }
 
 // RemoveIneligibleDomains runs eligibility checks on domains present in the
@@ -488,7 +492,7 @@ func (api API) RemoveIneligibleDomains(w http.ResponseWriter, r *http.Request) {
 			i++
 			wg.Add(1)
 			domainStates <- d
-			if i % 1000 == 0 {
+			if i%1000 == 0 {
 				api.logger.Printf("Sent %d domains to workers\n", i)
 			}
 		}

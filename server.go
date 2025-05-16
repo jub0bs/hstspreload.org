@@ -35,9 +35,9 @@ func main() {
 	server.Handle("/search.xml", searchXML(origin(*local)))
 	server.HandleFunc("/robots.txt", http.NotFound)
 
-	server.HandleFunc("/api/v2/preloadable", a.Preloadable)
+	server.Handle("/api/v2/preloadable", a.Preloadable())
 	server.HandleFunc("/api/v2/removable", a.Removable)
-	server.HandleFunc("/api/v2/status", a.Status)
+	server.Handle("/api/v2/status", a.Status())
 	server.HandleFunc("/api/v2/submit", a.Submit)
 	server.HandleFunc("/api/v2/remove", a.Remove)
 

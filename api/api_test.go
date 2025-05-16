@@ -157,11 +157,11 @@ func TestAPI(t *testing.T) {
 
 	apiTestSequence := []apiTestCase{
 		// wrong HTTP method
-		{"submit wrong method", data1, failNone, api.Preloadable, "POST", "?domain=garron.net",
+		{"submit wrong method", data1, failNone, api.Preloadable().ServeHTTP, "POST", "?domain=garron.net",
 			405, textContentType, wantBody{text: "Wrong method. Requires GET.\n"}},
 		{"submit wrong method", data1, failNone, api.Removable, "POST", "?domain=garron.net",
 			405, textContentType, wantBody{text: "Wrong method. Requires GET.\n"}},
-		{"status wrong method", data1, failNone, api.Status, "POST", "?domain=garron.net",
+		{"status wrong method", data1, failNone, api.Status().ServeHTTP, "POST", "?domain=garron.net",
 			405, textContentType, wantBody{text: "Wrong method. Requires GET.\n"}},
 		{"pending wrong method", data1, failNone, api.Pending, "POST", "",
 			405, textContentType, wantBody{text: "Wrong method. Requires GET.\n"}},
@@ -169,23 +169,23 @@ func TestAPI(t *testing.T) {
 			405, textContentType, wantBody{text: "Wrong method. Requires POST.\n"}},
 
 		// misc. issues
-		{"status wrong method", data1, failNone, api.Status, "GET", "",
+		{"status wrong method", data1, failNone, api.Status().ServeHTTP, "GET", "",
 			400, textContentType, wantBody{text: ""}},
-		{"status wrong method", data1, failNone, api.Status, "GET", "?domain=",
+		{"status wrong method", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=",
 			400, textContentType, wantBody{text: ""}},
 
 		// preloadable and removable
-		{"preloadable good", data1, failNone, api.Preloadable, "GET", "?domain=garron.net",
+		{"preloadable good", data1, failNone, api.Preloadable().ServeHTTP, "GET", "?domain=garron.net",
 			200, jsonContentType, wantBody{issues: &emptyIssues}},
-		{"preloadable warning", data1, failNone, api.Preloadable, "GET", "?domain=badssl.com",
+		{"preloadable warning", data1, failNone, api.Preloadable().ServeHTTP, "GET", "?domain=badssl.com",
 			200, jsonContentType, wantBody{issues: &issuesWithWarnings}},
-		{"preloadable error", data1, failNone, api.Preloadable, "GET", "?domain=example.com",
+		{"preloadable error", data1, failNone, api.Preloadable().ServeHTTP, "GET", "?domain=example.com",
 			200, jsonContentType, wantBody{issues: &issuesWithErrors}},
 		// initial
-		{"garron.net initial", data1, failNone, api.Status, "GET", "?domain=garron.net",
+		{"garron.net initial", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=garron.net",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "garron.net", Status: database.StatusUnknown}}},
-		{"example.com initial", data1, failNone, api.Status, "GET", "?domain=example.com",
+		{"example.com initial", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=example.com",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "example.com", Status: database.StatusUnknown}}},
 		{"pending 1", data1, failNone, api.Pending, "GET", "",
@@ -194,7 +194,7 @@ func TestAPI(t *testing.T) {
 		// initial with database failure
 		{"pending failure", data1, failDatabase, api.Pending, "GET", "",
 			500, textContentType, wantBody{text: "Internal error: could not retrieve list for status \"pending\". (forced failure)\n\n"}},
-		{"status failure", data1, failDatabase, api.Status, "GET", "?domain=garron.net",
+		{"status failure", data1, failDatabase, api.Status().ServeHTTP, "GET", "?domain=garron.net",
 			500, textContentType, wantBody{text: "Internal error: could not retrieve status. (forced failure)\n\n"}},
 
 		// submit
@@ -214,7 +214,7 @@ func TestAPI(t *testing.T) {
 			}}},
 
 		// update
-		{"garron.net pending", data1, failNone, api.Status, "GET", "?domain=garron.net",
+		{"garron.net pending", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=garron.net",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "garron.net", Status: database.StatusPending}}},
 		{"update chromiumpreload failure", data1, failChromiumpreload, api.Update, "GET", "",
@@ -226,15 +226,15 @@ func TestAPI(t *testing.T) {
 		{"pending 3", data1, failNone, api.Pending, "GET", "",
 			200, jsonContentType, wantBody{text: "[\n]\n"}},
 
-	    // pending automated removal
+		// pending automated removal
 		{"pending automated removal", data1, failNone, api.PendingAutomatedRemoval, "GET", "",
 			200, jsonContentType, wantBody{text: "[\n    \"pending-automated-removal.test\"\n]\n"}},
-		{"pending automated removal status", data1, failNone, api.Status, "GET", "?domain=pending-automated-removal.test",
+		{"pending automated removal status", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=pending-automated-removal.test",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "pending-automated-removal.test", Status: database.StatusPendingAutomatedRemoval}}},
 		{"submit previously pending automated removal", data1, failNone, api.Submit, "POST", "?domain=pending-automated-removal.test",
 			200, jsonContentType, wantBody{text: "", issues: &emptyIssues}},
-		{"pending-automated-removal.test status is now preloaded", data1, failNone, api.Status, "GET", "?domain=pending-automated-removal.test",
+		{"pending-automated-removal.test status is now preloaded", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=pending-automated-removal.test",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "pending-automated-removal.test", Status: database.StatusPreloaded}}},
 
@@ -272,19 +272,19 @@ func TestAPI(t *testing.T) {
 			200, jsonContentType, wantBody{issues: &issuesWithErrors}},
 
 		// Check removals
-		{"remove preloaded-bulk-eligible", data1, failNone, api.Status, "GET", "?domain=removal-preloaded-bulk-eligible.test",
+		{"remove preloaded-bulk-eligible", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=removal-preloaded-bulk-eligible.test",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "removal-preloaded-bulk-eligible.test", Status: database.StatusPendingRemoval}}},
-		{"remove preloaded-not-bulk-eligible", data1, failNone, api.Status, "GET", "?domain=removal-preloaded-not-bulk-eligible.test",
+		{"remove preloaded-not-bulk-eligible", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=removal-preloaded-not-bulk-eligible.test",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "removal-preloaded-not-bulk-eligible.test", Status: database.StatusPreloaded}}},
-		{"remove preloaded-bulk-ineligible", data1, failNone, api.Status, "GET", "?domain=removal-preloaded-bulk-ineligible.test",
+		{"remove preloaded-bulk-ineligible", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=removal-preloaded-bulk-ineligible.test",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "removal-preloaded-bulk-ineligible.test", Status: database.StatusPreloaded}}},
-		{"remove pending-eligible", data1, failNone, api.Status, "GET", "?domain=removal-pending-eligible.test",
+		{"remove pending-eligible", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=removal-pending-eligible.test",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "removal-pending-eligible.test", Status: database.StatusPendingRemoval}}},
-		{"remove pending-ineligible", data1, failNone, api.Status, "GET", "?domain=removal-pending-ineligible.test",
+		{"remove pending-ineligible", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=removal-pending-ineligible.test",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "removal-pending-ineligible.test", Status: database.StatusPending}}},
 
@@ -293,24 +293,24 @@ func TestAPI(t *testing.T) {
 			200, jsonContentType, wantBody{issues: &hstspreload.Issues{
 				Errors: []hstspreload.Issue{{Code: "server.preload.already_preloaded"}},
 			}}},
-		{"example.com after update", data1, failNone, api.Status, "GET", "?domain=example.com",
+		{"example.com after update", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=example.com",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "example.com", Status: database.StatusUnknown}}},
-		{"garron.net after update", data1, failNone, api.Status, "GET", "?domain=garron.net",
+		{"garron.net after update", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=garron.net",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "garron.net", Status: database.StatusPreloaded}}},
-		{"subdomains of garron.net after update", data1, failNone, api.Status, "GET", "?domain=www.sub.garron.net",
+		{"subdomains of garron.net after update", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=www.sub.garron.net",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "www.sub.garron.net", Status: database.StatusPreloaded}}},
-		{"chromium.org after update", data1, failNone, api.Status, "GET", "?domain=chromium.org",
+		{"chromium.org after update", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=chromium.org",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "chromium.org", Status: database.StatusPreloaded}}},
-		{"godoc.org after update", data1, failNone, api.Status, "GET", "?domain=godoc.org",
+		{"godoc.org after update", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=godoc.org",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "godoc.org", Status: database.StatusUnknown}}},
 
 		// subdomain status checks
-		{"subdomain status parent", data1, failNone, api.Status, "GET", "?domain=garron.net", 200, jsonContentType,
+		{"subdomain status parent", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=garron.net", 200, jsonContentType,
 			wantBody{
 				bulkState: &DomainStateWithBulk{
 					DomainState: &database.DomainState{
@@ -320,7 +320,7 @@ func TestAPI(t *testing.T) {
 					PreloadedDomain: "garron.net",
 				},
 			}},
-		{"subdomain status child", data1, failNone, api.Status, "GET", "?domain=sub.garron.net", 200, jsonContentType,
+		{"subdomain status child", data1, failNone, api.Status().ServeHTTP, "GET", "?domain=sub.garron.net", 200, jsonContentType,
 			wantBody{
 				bulkState: &DomainStateWithBulk{
 					DomainState: &database.DomainState{
@@ -334,10 +334,10 @@ func TestAPI(t *testing.T) {
 		// update with removal
 		{"update with removal", data2, failNone, api.Update, "GET", "",
 			200, textContentType, wantBody{text: "The preload list has 2 entries.\n- # to be added in this update: 0\n- # to be updated in this update: 0\n- # to be removed this update: 7\nSuccess. 7 domain states updated.\n"}},
-		{"garron.net after update with removal", data2, failNone, api.Status, "GET", "?domain=garron.net",
+		{"garron.net after update with removal", data2, failNone, api.Status().ServeHTTP, "GET", "?domain=garron.net",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "garron.net", Status: database.StatusRemoved}}},
-		{"chromium.org after update with removal", data2, failNone, api.Status, "GET", "?domain=chromium.org",
+		{"chromium.org after update with removal", data2, failNone, api.Status().ServeHTTP, "GET", "?domain=chromium.org",
 			200, jsonContentType, wantBody{state: &database.DomainState{
 				Name: "chromium.org", Status: database.StatusPreloaded}}},
 	}
@@ -425,37 +425,37 @@ func TestCORS(t *testing.T) {
 		wantCORS     string
 	}{
 		// Handlers that should allow CORS.
-		{"Preloadable", api.Preloadable, http.MethodGet, "", ""},
-		{"Preloadable", api.Preloadable, http.MethodGet, "http://example.com", "null"},
-		{"Preloadable", api.Preloadable, http.MethodGet, "http://example.com:80", "null"},
-		{"Preloadable", api.Preloadable, http.MethodGet, "http://example.com:443", "null"},
-		{"Preloadable", api.Preloadable, http.MethodGet, "https://example.com", "null"},
-		{"Preloadable", api.Preloadable, http.MethodGet, "https://example.com:80", "null"},
-		{"Preloadable", api.Preloadable, http.MethodGet, "https://example.com:443", "null"},
-		{"Preloadable", api.Preloadable, http.MethodGet, "http://localhost", "*"},
-		{"Preloadable", api.Preloadable, http.MethodGet, "http://localhost:8080", "*"},
-		{"Preloadable", api.Preloadable, http.MethodGet, "http://mozilla.github.io", "null"},
-		{"Preloadable", api.Preloadable, http.MethodGet, "http://mozilla.github.io:80", "null"},
-		{"Preloadable", api.Preloadable, http.MethodGet, "http://mozilla.github.io:443", "null"},
-		{"Preloadable", api.Preloadable, http.MethodGet, "https://mozilla.github.io", "*"},
-		{"Preloadable", api.Preloadable, http.MethodGet, "https://mozilla.github.io:80", "*"},
-		{"Preloadable", api.Preloadable, http.MethodGet, "https://mozilla.github.io:443", "*"},
-		{"Preloadable", api.Preloadable, http.MethodOptions, "http://localhost", "*"},
-		{"Preloadable", api.Preloadable, http.MethodOptions, "http://example.com", "null"},
-		{"Preloadable", api.Preloadable, http.MethodOptions, "https://example.com", "null"},
-		{"Preloadable", api.Preloadable, http.MethodOptions, "http://mozilla.github.io", "null"},
-		{"Preloadable", api.Preloadable, http.MethodOptions, "https://mozilla.github.io", "*"},
-		{"Preloadable", api.Preloadable, http.MethodPost, "https://mozilla.github.io", "*"},
-		{"Status", api.Status, http.MethodGet, "http://localhost:8080", "*"},
-		{"Status", api.Status, http.MethodGet, "http://example.com", "null"},
-		{"Status", api.Status, http.MethodGet, "https://example.com", "null"},
-		{"Status", api.Status, http.MethodGet, "http://mozilla.github.io", "null"},
-		{"Status", api.Status, http.MethodGet, "https://mozilla.github.io", "*"},
-		{"Status", api.Status, http.MethodOptions, "http://localhost:8080", "*"},
-		{"Status", api.Status, http.MethodOptions, "http://example.com", "null"},
-		{"Status", api.Status, http.MethodOptions, "https://example.com", "null"},
-		{"Status", api.Status, http.MethodOptions, "http://mozilla.github.io", "null"},
-		{"Status", api.Status, http.MethodOptions, "https://mozilla.github.io", "*"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "", ""},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "http://example.com", "null"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "http://example.com:80", "null"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "http://example.com:443", "null"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "https://example.com", "null"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "https://example.com:80", "null"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "https://example.com:443", "null"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "http://localhost", "*"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "http://localhost:8080", "*"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "http://mozilla.github.io", "null"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "http://mozilla.github.io:80", "null"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "http://mozilla.github.io:443", "null"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "https://mozilla.github.io", "*"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "https://mozilla.github.io:80", "*"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodGet, "https://mozilla.github.io:443", "*"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodOptions, "http://localhost", "*"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodOptions, "http://example.com", "null"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodOptions, "https://example.com", "null"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodOptions, "http://mozilla.github.io", "null"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodOptions, "https://mozilla.github.io", "*"},
+		{"Preloadable", api.Preloadable().ServeHTTP, http.MethodPost, "https://mozilla.github.io", "*"},
+		{"Status", api.Status().ServeHTTP, http.MethodGet, "http://localhost:8080", "*"},
+		{"Status", api.Status().ServeHTTP, http.MethodGet, "http://example.com", "null"},
+		{"Status", api.Status().ServeHTTP, http.MethodGet, "https://example.com", "null"},
+		{"Status", api.Status().ServeHTTP, http.MethodGet, "http://mozilla.github.io", "null"},
+		{"Status", api.Status().ServeHTTP, http.MethodGet, "https://mozilla.github.io", "*"},
+		{"Status", api.Status().ServeHTTP, http.MethodOptions, "http://localhost:8080", "*"},
+		{"Status", api.Status().ServeHTTP, http.MethodOptions, "http://example.com", "null"},
+		{"Status", api.Status().ServeHTTP, http.MethodOptions, "https://example.com", "null"},
+		{"Status", api.Status().ServeHTTP, http.MethodOptions, "http://mozilla.github.io", "null"},
+		{"Status", api.Status().ServeHTTP, http.MethodOptions, "https://mozilla.github.io", "*"},
 		// Handlers that should not allow CORS.
 		{"Removable", api.Removable, http.MethodGet, "http://localhost:8080", ""},
 		{"Removable", api.Removable, http.MethodGet, "http://example.com", ""},
